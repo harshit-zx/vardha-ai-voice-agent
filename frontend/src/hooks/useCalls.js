@@ -1,40 +1,53 @@
-import { useCallback, useEffect, useState } from "react";
-import { api } from "../services/api";
+const apiBaseUrl = String(
+  import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    "/api"
+).replace(/\/$/, "");
 
-export function useCalls({ pollInterval = 15000 } = {}) {
-  const [calls, setCalls] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+async function request(path, options = {}) {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
 
-  const refresh = useCallback(async ({ silent = false } = {}) => {
-    if (!silent) setLoading(true);
-    try {
-      const result = await api.getCalls();
-      setCalls(result.data || []);
-      setError("");
-      return result.data || [];
-    } catch (requestError) {
-      if (!silent) setError(requestError.message || "Unable to load call history.");
-      throw requestError;
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, []);
+  const body = await response.json().catch(() => ({}));
 
-  useEffect(() => {
-    const initialLoad = window.setTimeout(() => refresh().catch(() => undefined), 0);
-    if (!pollInterval) return () => window.clearTimeout(initialLoad);
-    const timer = window.setInterval(() => refresh({ silent: true }).catch(() => undefined), pollInterval);
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.clearInterval(timer);
-    };
-  }, [pollInterval, refresh]);
+  if (!response.ok || body.success === false) {
+    throw new Error(
+      body.message || `Request failed with status ${response.status}`
+    );
+  }
 
-  const addOrUpdateCall = useCallback((call) => {
-    if (!call?._id) return;
-    setCalls((current) => [call, ...current.filter((item) => item._id !== call._id)]);
-  }, []);
-
-  return { calls, loading, error, refresh, addOrUpdateCall };
+  return body;
 }
+
+export const api = {
+  createCall(phoneNumber) {
+    return request("/calls", {
+      method: "POST",
+      body: JSON.stringify({ phoneNumber }),
+    });
+  },
+
+  getCalls() {
+    return request("/calls");
+  },
+
+  getCall(id) {
+    return request(`/calls/${encodeURIComponent(id)}`);
+  },
+
+  getKnowledge() {
+    return request("/knowledge");
+  },
+
+  updateKnowledge(data) {
+    return request("/knowledge", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+};

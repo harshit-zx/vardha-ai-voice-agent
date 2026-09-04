@@ -11,7 +11,9 @@ export function CallForm({ onSubmit }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
     const normalizedPhone = normalizeIndianMobile(phoneNumber);
+
     if (!/^\+91[6-9]\d{9}$/.test(normalizedPhone)) {
       setError("Enter a valid 10-digit Indian mobile number.");
       return;
@@ -20,22 +22,41 @@ export function CallForm({ onSubmit }) {
     try {
       setSubmitting(true);
       setError("");
+
       await onSubmit(normalizedPhone);
+
       setPhoneNumber("");
     } catch (requestError) {
-      setError(requestError.message || "The call could not be started.");
+      setError(
+        requestError?.message ||
+          "The call could not be started."
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-      <div className="grid size-12 place-items-center rounded-xl bg-brand-50 text-brand-700"><PhoneCall size={22} aria-hidden="true" /></div>
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">Connect a caller to the AI agent</h2>
-        <p className="mt-1 text-sm leading-6 text-slate-600">The configured Exotel flow connects the call to the Voicebot and its knowledge-grounded responses.</p>
+    <form
+      className="space-y-5"
+      onSubmit={handleSubmit}
+      noValidate
+    >
+      <div className="grid size-12 place-items-center rounded-xl bg-brand-50 text-brand-700">
+        <PhoneCall size={22} aria-hidden="true" />
       </div>
+
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">
+          Connect a caller to the AI agent
+        </h2>
+
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          The configured Exotel flow connects the call to the
+          Voicebot and its knowledge-grounded responses.
+        </p>
+      </div>
+
       <Input
         id="phoneNumber"
         label="Mobile number"
@@ -51,8 +72,14 @@ export function CallForm({ onSubmit }) {
         autoFocus
         required
       />
-      <Button type="submit" className="w-full" disabled={submitting}>
+
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={submitting}
+      >
         <PhoneCall size={17} aria-hidden="true" />
+
         {submitting ? "Starting call…" : "Call"}
       </Button>
     </form>
