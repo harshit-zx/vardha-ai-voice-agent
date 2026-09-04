@@ -234,7 +234,14 @@ async function finishSession(session, reason) {
   if (session.callRecordId) {
     const call = await Call.findByIdAndUpdate(
       session.callRecordId,
-      { $set: { endedAt: new Date(), streamSid: session.streamSid || "", streamEndedAt: new Date() } },
+      {
+        $set: {
+          status: "completed",
+          endedAt: new Date(),
+          streamSid: session.streamSid || "",
+          streamEndedAt: new Date(),
+        },
+      },
       { new: true }
     );
     if (!["completed", "failed", "busy", "no-answer"].includes(call.status)) {
