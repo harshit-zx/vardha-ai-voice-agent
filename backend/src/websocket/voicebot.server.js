@@ -237,10 +237,8 @@ async function finishSession(session, reason) {
       { $set: { endedAt: new Date(), streamSid: session.streamSid || "", streamEndedAt: new Date() } },
       { new: true }
     );
-    if (call && ["completed", "failed", "busy", "no-answer"].includes(call.status)) {
-      startPostCallProcessing(call._id).catch((error) => {
-        console.error("[SUMMARY] Stream-end post-call processing failed:", error.message);
-      });
+    if (!["completed", "failed", "busy", "no-answer"].includes(call.status)) {
+      call.status = "in-progress";
     }
   }
   console.log(`[WEBSOCKET] Stream ended (${reason || "closed"}): ${session.callSid || session.streamSid || "unknown"}`);
