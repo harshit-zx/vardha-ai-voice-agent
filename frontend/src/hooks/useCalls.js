@@ -1,53 +1,46 @@
-const apiBaseUrl = String(
-  import.meta.env.VITE_API_BASE_URL ||
-    import.meta.env.VITE_API_URL ||
-    "/api"
-).replace(/\/$/, "");
+import { useCallback, useEffect, useState } from "react";
+import { api } from "../services/api";
 
-async function request(path, options = {}) {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
+export function useCalls() {
+  const [calls, setCalls] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const body = await response.json().catch(() => ({}));
+  const refresh = useCallback(async () => {
+    setLoading(true);
 
-  if (!response.ok || body.success === false) {
-    throw new Error(
-      body.message || `Request failed with status ${response.status}`
-    );
-  }
+    try {
+      const result = await api.getCalls();
 
-  return body;
+      const data = Array.isArray(result?.data)
+        ? result.data
+        : [];
+
+      setCalls(data);
+      setError("");
+
+      return data;
+    } catch (requestError) {
+      const message =
+        requestError?.message ||
+        "Unable to load call history.";
+
+      setError(message);
+
+      throw requestError;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh().catch(() => undefined);
+  }, [refresh]);
+
+  return {
+    calls,
+    loading,
+    error,
+    refresh,
+  };
 }
-
-export const api = {
-  createCall(phoneNumber) {
-    return request("/calls", {
-      method: "POST",
-      body: JSON.stringify({ phoneNumber }),
-    });
-  },
-
-  getCalls() {
-    return request("/calls");
-  },
-
-  getCall(id) {
-    return request(`/calls/${encodeURIComponent(id)}`);
-  },
-
-  getKnowledge() {
-    return request("/knowledge");
-  },
-
-  updateKnowledge(data) {
-    return request("/knowledge", {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  },
-};
