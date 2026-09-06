@@ -19,7 +19,7 @@ const MIN_UTTERANCE_MS = 500;
 const END_OF_UTTERANCE_SILENCE_MS = 700;
 const MAX_UTTERANCE_MS = 15000;
 
-const OUTBOUND_CHUNK_MS = 200;
+const OUTBOUND_CHUNK_MS = 100;
 
 function pcmEnergy(buffer) {
   if (!Buffer.isBuffer(buffer) || buffer.length < 2) {
@@ -189,69 +189,157 @@ function sendClear(session) {
  * Timestamp is stream-relative.
  * It must NOT use Date.now().
  */
-function sendPcmToExotel(session, pcm) {
-  if (!session.socket || session.socket.readyState !== WebSocket.OPEN) {
-    console.warn("[VOICEBOT] Cannot send PCM: WebSocket is not open");
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
+async function sendPcmToExotel(session, pcm) {
+  if (
+    !session.socket ||
+    session.socket.readyState !== WebSocket.OPEN
+  ) {
+    console.warn(
+      "[VOICEBOT] Cannot send PCM: WebSocket is not open"
+    );
     return false;
   }
 
   if (!Buffer.isBuffer(pcm) || pcm.length === 0) {
-    console.warn("[VOICEBOT] Cannot send PCM: empty/invalid buffer");
-
+    console.warn(
+      "[VOICEBOT] Cannot send PCM: empty/invalid buffer"
+    );
     return false;
   }
 
-  /*
-   * PCM16 must always contain complete 16-bit samples.
-   */
   if (pcm.length % 2 !== 0) {
     console.warn(
-      `[VOICEBOT] PCM length is odd: ${pcm.length}. Trimming last byte.`,
+      `[VOICEBOT] PCM length is odd: ${pcm.length}. Trimming last byte.`
     );
 
     pcm = pcm.subarray(0, pcm.length - 1);
   }
 
-  const chunks = audioChunksForExotel(pcm, session.sampleRate);
+  const chunkBytes = 3200;
 
-  if (!chunks.length) {
-    return false;
+  const chunks = [];
+
+  for (
+    let offset = 0;
+    offset < pcm.length;
+    offset += chunkBytes
+  ) {
+    let chunk = Buffer.from(
+      pcm.subarray(
+        offset,
+        Math.min(
+          offset + chunkBytes,
+          pcm.length
+        )
+      )
+    );
+
+    if (chunk.length < chunkBytes) {
+      chunk = Buffer.concat([
+        chunk,
+        Buffer.alloc(
+          chunkBytes - chunk.length
+        ),
+      ]);
+    }
+
+    chunks.push(chunk);
   }
 
   session.playbackActive = true;
-
-  /*
-   * Reset timestamp for every new TTS response.
-   *
-   * The timestamp describes the media timeline,
-   * not the absolute server clock.
-   */
   session.playbackTimestamp = 0;
 
-  if (!Number.isInteger(session.outboundSequence)) {
+  if (
+    !Number.isInteger(
+      session.outboundSequence
+    )
+  ) {
     session.outboundSequence = 1;
   }
 
-  if (!Number.isInteger(session.outboundChunk)) {
+  if (
+    !Number.isInteger(
+      session.outboundChunk
+    )
+  ) {
     session.outboundChunk = 1;
   }
 
-  console.log(`[VOICEBOT] Sending ${pcm.length} PCM bytes to Exotel`);
-
   console.log(
-    `[VOICEBOT] Audio duration: ${(pcm.length / 2 / session.sampleRate).toFixed(
-      2,
-    )} sec`,
+    `[VOICEBOT] Sending ${pcm.length} PCM bytes to Exotel`
   );
 
-  console.log(`[VOICEBOT] Exotel chunks: ${chunks.length}`);
+  console.log(
+    `[VOICEBOT] Audio duration: ${
+      (
+        pcm.length /
+        2 /
+        session.sampleRate
+      ).toFixed(2)
+    } sec`
+  );
 
-  for (let index = 0; index < chunks.length; index += 1) {
-    if (session.socket.readyState !== WebSocket.OPEN) {
-      console.warn("[VOICEBOT] WebSocket closed during TTS playback");
+  console.log(
+    `[VOICEBOT] Exotel chunks: ${chunks.length}`
+  );
+
+  /*
+   * IMPORTANT:
+   *
+   * Do NOT send all chunks immediately.
+   *
+   * 3200 bytes at 8kHz / 16-bit / mono
+   * represents 200ms of audio.
+   *
+   * Therefore send one chunk approximately
+   * every 200ms.
+   */
+
+  for (
+    let index = 0;
+    index < chunks.length;
+    index += 1
+  ) {
+    if (
+      session.closed ||
+      session.finished
+    ) {
+      console.log(
+        "[VOICEBOT] Playback stopped because session ended"
+      );
 
       session.playbackActive = false;
+
+      return false;
+    }
+
+    if (
+      session.socket.readyState !==
+      WebSocket.OPEN
+    ) {
+      console.warn(
+        "[VOICEBOT] WebSocket closed during playback"
+      );
+
+      session.playbackActive = false;
+
+      return false;
+    }
+
+    /*
+     * If caller interrupted the AI, stop
+     * sending remaining TTS immediately.
+     */
+    if (!session.playbackActive) {
+      console.log(
+        "[VOICEBOT] Playback interrupted; stopping TTS stream"
+      );
 
       return false;
     }
@@ -259,63 +347,107 @@ function sendPcmToExotel(session, pcm) {
     const chunk = chunks[index];
 
     const durationMs = Math.round(
-      (chunk.length / 2 / session.sampleRate) * 1000,
+      (chunk.length /
+        2 /
+        session.sampleRate) *
+        1000
     );
 
-    const sequenceNumber = session.outboundSequence++;
+    const sequenceNumber =
+      session.outboundSequence++;
 
-    const chunkNumber = session.outboundChunk++;
+    const chunkNumber =
+      session.outboundChunk++;
 
-    const timestamp = session.playbackTimestamp;
+    const timestamp =
+      session.playbackTimestamp;
 
     const payload = {
       event: "media",
 
-      sequence_number: sequenceNumber,
+      sequence_number:
+        sequenceNumber,
 
-      stream_sid: session.streamSid,
+      stream_sid:
+        session.streamSid,
 
       media: {
-        chunk: String(chunkNumber),
+        chunk:
+          String(chunkNumber),
 
-        timestamp: String(timestamp),
+        timestamp:
+          String(timestamp),
 
-        payload: chunk.toString("base64"),
+        payload:
+          chunk.toString("base64"),
       },
     };
 
-    const sent = safeSend(session.socket, payload);
+    const sent = safeSend(
+      session.socket,
+      payload
+    );
 
     if (!sent) {
-      session.playbackActive = false;
+      session.playbackActive =
+        false;
+
       return false;
     }
 
-    console.log(`[VOICEBOT] OUT media #${chunkNumber}:`, {
-      sequence: sequenceNumber,
-      timestamp,
-      bytes: chunk.length,
-      durationMs,
-    });
+    console.log(
+      `[VOICEBOT] OUT media #${chunkNumber}:`,
+      {
+        sequence: sequenceNumber,
+        timestamp,
+        bytes: chunk.length,
+        durationMs,
+      }
+    );
 
-    session.playbackTimestamp += durationMs;
+    session.playbackTimestamp +=
+      durationMs;
+
+    /*
+     * Wait approximately the same amount of
+     * time as the audio represented by this chunk.
+     *
+     * This is the critical fix.
+     */
+    if (index < chunks.length - 1) {
+      await sleep(durationMs);
+    }
   }
 
   /*
-   * Tell Exotel that this TTS segment is complete.
+   * Send mark AFTER the complete audio has been
+   * paced into the Exotel stream.
    */
-  const markName = `tts-${Date.now()}-${session.outboundChunk}`;
+  if (
+    session.socket.readyState !==
+    WebSocket.OPEN
+  ) {
+    return false;
+  }
 
-  session.lastMark = markName;
+  const markName =
+    `tts-${Date.now()}-${session.outboundChunk}`;
 
-  console.log(`[VOICEBOT] Sending playback mark: ${markName}`);
+  session.lastMark =
+    markName;
+
+  console.log(
+    `[VOICEBOT] Sending playback mark: ${markName}`
+  );
 
   safeSend(session.socket, {
     event: "mark",
 
-    sequence_number: session.outboundSequence++,
+    sequence_number:
+      session.outboundSequence++,
 
-    stream_sid: session.streamSid,
+    stream_sid:
+      session.streamSid,
 
     mark: {
       name: markName,
@@ -338,38 +470,76 @@ async function appendProcessingError(callId, message) {
 }
 
 async function speak(session, text) {
-  if (!text || session.closed || session.finished) {
+  if (
+    !text ||
+    session.closed ||
+    session.finished
+  ) {
     return;
   }
 
   try {
-    console.log("[TTS] Generating speech:", text);
+    console.log(
+      "[TTS] Generating speech:",
+      text
+    );
 
-    const pcm = await synthesizeSpeech(text, {
-      outputSampleRate: session.sampleRate,
-    });
+    const pcm =
+      await synthesizeSpeech(
+        text,
+        {
+          outputSampleRate:
+            session.sampleRate,
+        }
+      );
 
-    if (!Buffer.isBuffer(pcm) || !pcm.length) {
-      throw new Error("TTS returned empty PCM audio");
+    if (
+      !Buffer.isBuffer(pcm) ||
+      !pcm.length
+    ) {
+      throw new Error(
+        "TTS returned empty PCM audio"
+      );
     }
 
-    console.log("[TTS] PCM ready:", {
-      bytes: pcm.length,
-      sampleRate: session.sampleRate,
-      channels: 1,
-      bitsPerSample: 16,
-      durationSeconds: (pcm.length / 2 / session.sampleRate).toFixed(2),
-    });
+    console.log(
+      "[TTS] PCM ready:",
+      {
+        bytes: pcm.length,
 
-    if (!session.closed) {
-      sendPcmToExotel(session, pcm);
+        sampleRate:
+          session.sampleRate,
+
+        channels: 1,
+
+        bitsPerSample: 16,
+
+        durationSeconds: (
+          pcm.length /
+          2 /
+          session.sampleRate
+        ).toFixed(2),
+      }
+    );
+
+    if (
+      !session.closed &&
+      !session.finished
+    ) {
+      await sendPcmToExotel(
+        session,
+        pcm
+      );
     }
   } catch (error) {
-    console.error("[TTS] Unable to return agent audio:", error.message);
+    console.error(
+      "[TTS] Unable to return agent audio:",
+      error.message
+    );
 
     await appendProcessingError(
       session.callRecordId,
-      "Text-to-speech failed during the call.",
+      "Text-to-speech failed during the call."
     );
   }
 }
