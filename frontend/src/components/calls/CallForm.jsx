@@ -27,21 +27,14 @@ export function CallForm({ onSubmit }) {
 
       setPhoneNumber("");
     } catch (requestError) {
-      setError(
-        requestError?.message ||
-          "The call could not be started."
-      );
+      setError(requestError?.message || "The call could not be started.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <form
-      className="space-y-5"
-      onSubmit={handleSubmit}
-      noValidate
-    >
+    <form className="space-y-5" onSubmit={handleSubmit} noValidate>
       <div className="grid size-12 place-items-center rounded-xl bg-brand-50 text-brand-700">
         <PhoneCall size={22} aria-hidden="true" />
       </div>
@@ -52,8 +45,8 @@ export function CallForm({ onSubmit }) {
         </h2>
 
         <p className="mt-1 text-sm leading-6 text-slate-600">
-          The configured Exotel flow connects the call to the
-          Voicebot and its knowledge-grounded responses.
+          The configured Exotel flow connects the call to the Voicebot and its
+          knowledge-grounded responses.
         </p>
       </div>
 
@@ -73,11 +66,7 @@ export function CallForm({ onSubmit }) {
         required
       />
 
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={submitting}
-      >
+      <Button type="submit" className="w-full" disabled={submitting}>
         <PhoneCall size={17} aria-hidden="true" />
 
         {submitting ? "Starting call…" : "Call"}

@@ -48,15 +48,11 @@ export function CallHistory() {
     return calls.filter((call) => {
       const phone = normalizeSearchPhone(call.phoneNumber);
 
-      const matchesPhone =
-        !query || phone.includes(query);
+      const matchesPhone = !query || phone.includes(query);
 
-      const normalizedStatus = String(
-        call.status || "unknown",
-      ).toLowerCase();
+      const normalizedStatus = String(call.status || "unknown").toLowerCase();
 
-      const matchesStatus =
-        status === "all" || normalizedStatus === status;
+      const matchesStatus = status === "all" || normalizedStatus === status;
 
       return matchesPhone && matchesStatus;
     });
@@ -78,8 +74,7 @@ export function CallHistory() {
     setStatus("all");
   };
 
-  const hasFilters =
-    search.trim().length > 0 || status !== "all";
+  const hasFilters = search.trim().length > 0 || status !== "all";
 
   return (
     <>
@@ -114,9 +109,7 @@ export function CallHistory() {
                 id="call-search"
                 label="Search phone number"
                 value={search}
-                onChange={(event) =>
-                  setSearch(event.target.value)
-                }
+                onChange={(event) => setSearch(event.target.value)}
                 placeholder="+91 98765 43210"
                 inputMode="tel"
                 autoComplete="off"
@@ -147,16 +140,11 @@ export function CallHistory() {
               <select
                 id="call-status"
                 value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value)
-                }
+                onChange={(event) => setStatus(event.target.value)}
                 className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-3 focus:ring-brand-100"
               >
                 {STATUS_OPTIONS.map((option) => (
-                  <option
-                    key={option.value}
-                    value={option.value}
-                  >
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -218,11 +206,7 @@ export function CallHistory() {
         ) : (
           <CallTable
             calls={filteredCalls}
-            emptyTitle={
-              calls.length
-                ? "No matching calls"
-                : "No calls yet"
-            }
+            emptyTitle={calls.length ? "No matching calls" : "No calls yet"}
             emptyDescription={
               calls.length
                 ? "Try a different phone number or status filter."

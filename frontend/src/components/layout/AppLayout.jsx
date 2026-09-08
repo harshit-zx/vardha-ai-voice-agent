@@ -10,7 +10,10 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
       <Sidebar />
-      <MobileSidebar open={mobileNavigationOpen} onClose={() => setMobileNavigationOpen(false)} />
+      <MobileSidebar
+        open={mobileNavigationOpen}
+        onClose={() => setMobileNavigationOpen(false)}
+      />
       <div className="min-w-0 flex-1">
         <Header onOpenNavigation={() => setMobileNavigationOpen(true)} />
         <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

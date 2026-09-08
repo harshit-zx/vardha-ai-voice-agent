@@ -16,7 +16,9 @@ const statusStyles = {
 export function StatusBadge({ status }) {
   const normalized = String(status || "unknown").toLowerCase();
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyles[normalized] || statusStyles.unknown}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyles[normalized] || statusStyles.unknown}`}
+    >
       <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
       {readableStatus(normalized)}
     </span>

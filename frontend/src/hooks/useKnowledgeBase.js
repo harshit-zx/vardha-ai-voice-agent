@@ -32,10 +32,7 @@ export function useKnowledgeBase() {
 
       return value;
     } catch (requestError) {
-      setError(
-        requestError?.message ||
-          "Unable to load the Knowledge Base."
-      );
+      setError(requestError?.message || "Unable to load the Knowledge Base.");
 
       throw requestError;
     } finally {
