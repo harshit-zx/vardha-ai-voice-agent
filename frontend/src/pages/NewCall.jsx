@@ -12,7 +12,8 @@ export function NewCall() {
   const [createdCall, setCreatedCall] = useState(null);
 
   useEffect(() => {
-    if (!createdCall?._id || !activeCallStatuses.includes(createdCall.status)) return undefined;
+    if (!createdCall?._id || !activeCallStatuses.includes(createdCall.status))
+      return undefined;
     const timer = window.setInterval(async () => {
       try {
         const result = await api.getCall(createdCall._id);
@@ -26,8 +27,53 @@ export function NewCall() {
 
   return (
     <>
-      <PageHeader eyebrow="OUTBOUND CALL" title="Start a new call" description="Enter a verified Indian mobile number to ask Exotel to connect the caller to the AI voice agent." />
-      <div className="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]"><Card className="p-5 sm:p-7"><CallForm onSubmit={async (phoneNumber) => { const result = await api.createCall(phoneNumber); setCreatedCall(result.data); }} />{createdCall && <div className="mt-5"><CallStatus call={createdCall} /><Link className="mt-3 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600" to={`/calls/${createdCall._id}`}>Open call details</Link></div>}</Card><Card className="h-fit p-5"><div className="flex gap-3"><Info size={19} className="mt-0.5 shrink-0 text-brand-700" aria-hidden="true" /><div><h2 className="font-semibold text-slate-900">Before calling</h2><ol className="mt-2 list-decimal space-y-2 pl-4 text-sm leading-6 text-slate-600"><li>Save verified company information in the Knowledge Base.</li><li>Configure Exotel, AI providers, MongoDB, and a public URL.</li><li>Set the Exotel Voicebot applet WSS endpoint.</li></ol></div></div></Card></div>
+      <PageHeader
+        eyebrow="OUTBOUND CALL"
+        title="Start a new call"
+        description="Enter a verified Indian mobile number to ask Exotel to connect the caller to the AI voice agent."
+      />
+      <div className="grid max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <Card className="p-5 sm:p-7">
+          <CallForm
+            onSubmit={async (phoneNumber) => {
+              const result = await api.createCall(phoneNumber);
+              setCreatedCall(result.data);
+            }}
+          />
+          {createdCall && (
+            <div className="mt-5">
+              <CallStatus call={createdCall} />
+              <Link
+                className="mt-3 inline-block text-sm font-semibold text-brand-700 hover:text-brand-600"
+                to={`/calls/${createdCall._id}`}
+              >
+                Open call details
+              </Link>
+            </div>
+          )}
+        </Card>
+        <Card className="h-fit p-5">
+          <div className="flex gap-3">
+            <Info
+              size={19}
+              className="mt-0.5 shrink-0 text-brand-700"
+              aria-hidden="true"
+            />
+            <div>
+              <h2 className="font-semibold text-slate-900">Before calling</h2>
+              <ol className="mt-2 list-decimal space-y-2 pl-4 text-sm leading-6 text-slate-600">
+                <li>
+                  Save verified company information in the Knowledge Base.
+                </li>
+                <li>
+                  Configure Exotel, AI providers, MongoDB, and a public URL.
+                </li>
+                <li>Set the Exotel Voicebot applet WSS endpoint.</li>
+              </ol>
+            </div>
+          </div>
+        </Card>
+      </div>
     </>
   );
 }

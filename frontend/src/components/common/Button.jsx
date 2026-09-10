@@ -20,7 +20,10 @@ export function Button({
   return (
     <Component
       {...(Component === "button" ? { type } : {})}
-      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 ${variants[variant] || variants.primary} ${className}`}
+      className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm
+        font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2
+        focus-visible:outline-offset-2 
+        ${variants[variant] || variants.primary} ${className}`}
       {...props}
     >
       {children}
